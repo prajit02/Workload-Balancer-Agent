@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workload Balancing Agent</title>
+
+    <!-- Tailwind Play CDN (no install) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // optional config - extend colors/fonts if you want
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: "#eef2ff",
+                500: "#6366F1",
+                700: "#4F46E5"
+              }
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-slate-50 min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
