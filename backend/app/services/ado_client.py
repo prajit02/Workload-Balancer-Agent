@@ -17,7 +17,7 @@ def fetch_workitems(org: str, project: str, pat: str):
         SELECT [System.Id]
         FROM workitems
         WHERE 
-            [System.CreatedDate] >= @Today - 2
+            [System.CreatedDate] >= @Today - 7
             AND [System.WorkItemType] = 'Task'
             AND [System.TeamProject] = '{project}'
         ORDER BY [System.Id] DESC
