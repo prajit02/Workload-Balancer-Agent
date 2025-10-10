@@ -1,6 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import re
+from datetime import datetime, timedelta
 
 BASE_API_VERSION = "7.0"
 
@@ -38,8 +39,13 @@ def fetch_workitems(org: str, project: str, pat: str):
         comments = fetch_comments(org, project, pat, wi_id)
         wi["comments"] = comments
         
+        if(len(comments) == 0):
+            comments = [" No comments found "]
+
+        # print("Comments:", comments[0])
+
         wi = {
-            "id": wi["id"],
+            "id": wi.get("id"),
             "fields": {
                 "System.Id": wi["fields"].get("System.Id"),
                 "System.Title": wi["fields"].get("System.Title"),
@@ -53,7 +59,9 @@ def fetch_workitems(org: str, project: str, pat: str):
         }
         enriched_items.append(wi)
 
-    return {"count": len(enriched_items), "workItems": enriched_items}
+        pull_requests = fetch_pullrequests(org, project, pat)
+
+    return {"count": len(enriched_items), "workItems": enriched_items, "PR Data": pull_requests}
 
 def fetch_comments(org: str, project: str, pat: str, work_item_id: int):
     """Fetch comments for a given work item"""
@@ -64,9 +72,86 @@ def fetch_comments(org: str, project: str, pat: str, work_item_id: int):
     data = response.json()
     return [c.get("text", "") for c in data.get("comments", [])]
 
+def fetch_pullrequests(org: str, project: str, pat: str):
+    """Fetch pull requests for a project"""
+    # TODO: comment count
 
+    today = datetime.today()
+    one_month_ago = today - timedelta(days=30)
 
+    start_date = one_month_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+    # end_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
 
+    url = f"https://dev.azure.com/{org}/{project}/_apis/git/pullrequests?status=completed&minTime={start_date}"
+    response = requests.get(url, auth=HTTPBasicAuth("", pat))
+
+    if response.status_code != 200:
+        print(response)
+        return {}
+    data = response.json()
+
+    name_counts = {}
+    result = []
+
+    for pr in data.get("value", []):
+        created_by = pr.get("createdBy", {})
+        display_name = created_by.get("displayName")
+
+        # Handle created_by displayName
+        if display_name:
+            if display_name in name_counts:
+                name_counts[display_name]["created_count"] += 1
+            else:
+                name_counts[display_name] = {
+                    "created_count": 1,
+                    "reviewed_count": 0
+                }
+
+        # Handle reviewers
+        for reviewer in pr.get("reviewers", []):
+            reviewer_display_name = reviewer.get("displayName")
+            if reviewer_display_name:
+                if reviewer_display_name in name_counts:
+                    if "reviewed_count" in name_counts[reviewer_display_name]:
+                        name_counts[reviewer_display_name]["reviewed_count"] += 1
+                    else:
+                        name_counts[reviewer_display_name]["reviewed_count"] = 1
+                else:
+                    name_counts[reviewer_display_name] = {
+                        "created_count": 0,
+                        "reviewed_count": 1
+                    }
+
+        # Add PR details to result list
+        result.append({
+            "repository": {
+                "name": pr.get("repository", {}).get("name"),
+                "id": pr.get("repository", {}).get("id")
+            },
+            "pullRequestId": pr.get("pullRequestId"),
+            "status": pr.get("status"),
+            "createdBy": {
+                "displayName": pr.get("createdBy", {}).get("displayName"),
+                "id": pr.get("createdBy", {}).get("id"),
+                "uniqueName": pr.get("createdBy", {}).get("uniqueName")
+            },
+            "creationDate": pr.get("creationDate"),
+            "closedDate": pr.get("closedDate"),
+            "title": pr.get("title"),
+            "reviewers": [{
+                "displayName": reviewer.get("displayName"),
+                "id": reviewer.get("id"),
+                "uniqueName": reviewer.get("uniqueName"),
+                "vote": reviewer.get("vote")
+            } for reviewer in pr.get("reviewers", [])]
+        })
+
+    finalresult = {
+        "pullRequests": {"count": len(result), "requestsInfo": result},
+        "metricsInfo": name_counts
+    }
+
+    return finalresult
 
 
     # print(type(enriched_items[0]))
