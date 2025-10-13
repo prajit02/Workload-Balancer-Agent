@@ -60,8 +60,9 @@ def fetch_workitems(org: str, project: str, pat: str):
         enriched_items.append(wi)
 
         pull_requests = fetch_pullrequests(org, project, pat)
+        ado_items = fetch_ado_items(org, project, pat)
 
-    return {"count": len(enriched_items), "workItems": enriched_items, "PR Data": pull_requests}
+    return {"count": len(enriched_items), "workItems": enriched_items, "PR Data": pull_requests, "ADO Items": ado_items}
 
 def fetch_comments(org: str, project: str, pat: str, work_item_id: int):
     """Fetch comments for a given work item"""
@@ -153,6 +154,47 @@ def fetch_pullrequests(org: str, project: str, pat: str):
 
     return finalresult
 
+def fetch_ado_items(org: str, project: str, pat: str):
+    """"Fetch ado items"""
+    #TODO count by user of items
+
+    query = f"""
+        SELECT [System.Id]
+        FROM workitems
+        WHERE 
+            [System.CreatedDate] >= @Today - 30
+            AND [System.TeamProject] = '{project}'
+        ORDER BY [System.Id] DESC
+    """
+
+    ado_items = run_wiql(org, project, pat, query)
+
+    ids = ",".join(str(item["id"]) for item in ado_items)
+    details_url = f"https://dev.azure.com/{org}/_apis/wit/workitems?ids={ids}&$expand=fields&api-version={BASE_API_VERSION}"
+    details_response = requests.get(details_url, auth=HTTPBasicAuth("", pat))
+    details_response.raise_for_status()
+    details_response = details_response.json()
+
+    enriched_items = []
+    for wi in details_response.get("value", []):
+        if wi["fields"].get("System.WorkItemType") == "Task":
+            continue
+        wi = {
+            "id": wi.get("id"),
+            "fields": {
+                # "System.Id": wi["fields"].get("System.Id"),
+                "System.Title": wi["fields"].get("System.Title"),
+                # "System.TeamProject": wi["fields"].get("System.TeamProject"),
+                "System.WorkItemType": wi["fields"].get("System.WorkItemType"),
+                "System.AssignedTo": {
+                    "displayName": wi["fields"].get("System.AssignedTo", {}).get("displayName")
+                } if wi["fields"].get("System.AssignedTo") else None,
+                "System.CreatedDate": wi["fields"].get("System.CreatedDate")
+            }
+        }
+        enriched_items.append(wi)
+
+    return {"count": len(enriched_items), "adoItems": enriched_items}
 
     # print(type(enriched_items[0]))
     # print(enriched_items[0].keys())
