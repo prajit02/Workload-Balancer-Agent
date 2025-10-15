@@ -162,7 +162,7 @@ def fetch_ado_items(org: str, project: str, pat: str):
         SELECT [System.Id]
         FROM workitems
         WHERE 
-            [System.CreatedDate] >= @Today - 30
+            [System.CreatedDate] >= @Today - 15
             AND [System.TeamProject] = '{project}'
         ORDER BY [System.Id] DESC
     """
@@ -186,15 +186,28 @@ def fetch_ado_items(org: str, project: str, pat: str):
                 "System.Title": wi["fields"].get("System.Title"),
                 # "System.TeamProject": wi["fields"].get("System.TeamProject"),
                 "System.WorkItemType": wi["fields"].get("System.WorkItemType"),
-                "System.AssignedTo": {
-                    "displayName": wi["fields"].get("System.AssignedTo", {}).get("displayName")
-                } if wi["fields"].get("System.AssignedTo") else None,
+                "System.CreatedBy": {
+                    "displayName": wi["fields"].get("System.CreatedBy", {}).get("displayName")
+                },
                 "System.CreatedDate": wi["fields"].get("System.CreatedDate")
             }
         }
         enriched_items.append(wi)
 
-    return {"count": len(enriched_items), "adoItems": enriched_items}
+    name_counts = {}
+    for item in enriched_items:
+        created_by = item["fields"].get("System.CreatedBy", {})
+        display_name = created_by.get("displayName")
+        work_item_type = item["fields"].get("System.WorkItemType")
+        if display_name:
+            if display_name not in name_counts:
+                name_counts[display_name] = {}
+            if work_item_type in name_counts[display_name]:
+                name_counts[display_name][work_item_type] += 1
+            else:
+                name_counts[display_name][work_item_type] = 1
+
+    return {"count": len(enriched_items), "adoItems": enriched_items, "metricsInfo": name_counts}
 
     # print(type(enriched_items[0]))
     # print(enriched_items[0].keys())
