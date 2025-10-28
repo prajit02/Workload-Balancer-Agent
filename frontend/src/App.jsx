@@ -3,6 +3,8 @@ import WorkloadForm from "./components/WorkloadForm.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import TeamSummary from "./components/TeamSummary.jsx";
 import TaskList from "./components/TaskList.jsx";
+import PRData from "./components/PRData.jsx";
+import AdoItems from "./components/ADOItems.jsx";
 
 export default function App() {
   const [result, setResult] = useState(null);
@@ -57,11 +59,15 @@ export default function App() {
 
         {result && (
           <section className="space-y-6">
-            {/* {console.log(result)} */}
             <TeamSummary summary={result.workItems.team_summary} />
             <TaskList items={result.workItems.analyzed_items} />
+
+            {/* New Components */}
+            <PRData data={result["PR Data"]} />
+            <AdoItems data={result["ADO Items"]} />
           </section>
         )}
+
       </main>
     </div>
   );

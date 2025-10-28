@@ -59,8 +59,8 @@ def fetch_workitems(org: str, project: str, pat: str):
         }
         enriched_items.append(wi)
 
-        pull_requests = fetch_pullrequests(org, project, pat)
-        ado_items = fetch_ado_items(org, project, pat)
+    pull_requests = fetch_pullrequests(org, project, pat)
+    ado_items = fetch_ado_items(org, project, pat)
 
     return {"count": len(enriched_items), "workItems": enriched_items, "PR Data": pull_requests, "ADO Items": ado_items}
 
