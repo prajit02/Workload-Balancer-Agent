@@ -177,8 +177,8 @@ def fetch_ado_items(org: str, project: str, pat: str):
 
     enriched_items = []
     for wi in details_response.get("value", []):
-        if wi["fields"].get("System.WorkItemType") == "Task":
-            continue
+        # if wi["fields"].get("System.WorkItemType") == "Task":
+        #     continue
         wi = {
             "id": wi.get("id"),
             "fields": {

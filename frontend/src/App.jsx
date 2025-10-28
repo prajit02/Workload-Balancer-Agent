@@ -37,6 +37,26 @@ export default function App() {
     }
   };
 
+  const fetchOnly = async ({ org, project, pat }) => {
+  setError("");
+  setLoading(true);
+  setResult(null);
+
+  try {
+    const params = new URLSearchParams({ org, project, pat });
+    const res = await fetch(`http://127.0.0.1:8000/workitems?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+    setResult(data);
+  } catch (e) {
+    console.error(e);
+    setError(String(e));
+  } finally {
+    setLoading(false);
+  }
+};
+
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       <header className="mb-6">
@@ -46,7 +66,7 @@ export default function App() {
 
       <main>
         <div className="mb-6">
-          <WorkloadForm onAnalyze={analyze} disabled={loading} />
+          <WorkloadForm onAnalyze={analyze} onFetchOnly={fetchOnly} disabled={loading} />
         </div>
 
         {loading && <LoadingScreen />}
@@ -57,16 +77,50 @@ export default function App() {
           </div>
         )}
 
-        {result && (
-          <section className="space-y-6">
-            <TeamSummary summary={result.workItems.team_summary} />
-            <TaskList items={result.workItems.analyzed_items} />
+      {result && (
+        <section className="space-y-6">
+          {(() => {
+            /*
+            Normalize workItems:
+            - If workItems has analyzed_items -> use those + team summary
+            - Else if workItems is an array -> use it directly
+            */
+            const w = result.workItems;
+            const isAnalyzed = w && typeof w === "object" && Array.isArray(w.analyzed_items);
+            const analyzedItems = isAnalyzed ? w.analyzed_items : w
+              // : Array.isArray(w) ? w 
+                // : Array.isArray(w?.workItems) ? w.workItems
+                //   : [];
 
-            {/* New Components */}
-            <PRData data={result["PR Data"]} />
-            <AdoItems data={result["ADO Items"]} />
-          </section>
-        )}
+            const teamSummary = isAnalyzed ? w.team_summary : null;
+
+            return (
+              <>
+                {teamSummary ? (
+                  /* If we have a team summary (analyzed path) show summary + analyzed tasks */
+                  <>
+                    <TeamSummary summary={teamSummary} />
+                    <TaskList items={analyzedItems} />
+                  </>
+                ) : (
+                  /* Otherwise show simple fetched task list */
+                  <>
+                    <h2 className="text-xl font-semibold text-slate-700">Fetched Work Items</h2>
+                    <TaskList items={analyzedItems} />
+                  </>
+                )}
+
+                {/* PR Data & ADO Items (top-level keys) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>{result["PR Data"] ? <PRData data={result["PR Data"]} /> : null}</div>
+                  <div>{result["ADO Items"] ? <AdoItems data={result["ADO Items"]} /> : null}</div>
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      )}
+
 
       </main>
     </div>

@@ -6,7 +6,7 @@ export default function AdoItems({ data }) {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm">
-      <h2 className="text-xl font-semibold mb-4">ADO Items (Non-Task)</h2>
+      <h2 className="text-xl font-semibold mb-4">ADO Items</h2>
 
       {/* Metrics Summary */}
       <div className="mb-4">
@@ -50,7 +50,7 @@ export default function AdoItems({ data }) {
                     <td className="border p-2">{item.id}</td>
                     <td className="border p-2">{item.fields["System.Title"]}</td>
                     <td className="border p-2">{item.fields["System.WorkItemType"]}</td>
-                    <td className="border p-2">{item.fields["System.CreatedBy.displayName"]}</td>
+                    <td className="border p-2">{item.fields["System.CreatedBy"]["displayName"]}</td>
                     <td className="border p-2">{item.fields["System.CreatedDate"]}</td>
                   </tr>
                 ))}

@@ -1,21 +1,22 @@
 import { useState } from "react";
 
-export default function WorkloadForm({ onAnalyze, disabled }) {
+export default function WorkloadForm({ onAnalyze, onFetchOnly, disabled }) {
   const [org, setOrg] = useState("");
   const [project, setProject] = useState("");
   const [pat, setPat] = useState("");
 
-  const submit = (e) => {
+  const handleSubmit = (e, analyze) => {
     e.preventDefault();
     if (!org || !project || !pat) {
       alert("Please fill Organization, Project and PAT.");
       return;
     }
-    onAnalyze({ org, project, pat });
+    if (analyze) onAnalyze({ org, project, pat });
+    else onFetchOnly({ org, project, pat });
   };
 
   return (
-    <form onSubmit={submit} className="bg-white p-6 rounded-lg shadow-sm grid gap-4 sm:grid-cols-3">
+    <form className="bg-white p-6 rounded-lg shadow-sm grid gap-4 sm:grid-cols-3">
       <div className="sm:col-span-1">
         <label className="block text-sm text-slate-700 mb-1">Organization</label>
         <input
@@ -50,13 +51,23 @@ export default function WorkloadForm({ onAnalyze, disabled }) {
         />
       </div>
 
-      <div className="sm:col-span-3 flex justify-end mt-2">
+      <div className="sm:col-span-3 flex justify-end gap-3 mt-2">
         <button
-          type="submit"
+          type="button"
+          onClick={(e) => handleSubmit(e, false)}
+          disabled={disabled}
+          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded shadow"
+        >
+          {disabled ? "Fetching..." : "Fetch Only"}
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => handleSubmit(e, true)}
           disabled={disabled}
           className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded shadow"
         >
-          {disabled ? "Analyzing..." : "Analyze Workload"}
+          {disabled ? "Analyzing..." : "Analyze with AI"}
         </button>
       </div>
     </form>
