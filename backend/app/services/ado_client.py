@@ -18,23 +18,44 @@ def fetch_workitems(org: str, project: str, pat: str):
         SELECT [System.Id]
         FROM workitems
         WHERE 
-            [System.CreatedDate] >= @Today - 7
+            [System.CreatedDate] >= @Today - 15
             AND [System.WorkItemType] = 'Task'
             AND [System.TeamProject] = '{project}'
         ORDER BY [System.Id] DESC
     """
-    work_items = run_wiql(org, project, pat, query)
-    if not work_items:
-        return {"workItems": []}
+    # work_items = run_wiql(org, project, pat, query)
+    # if not work_items:
+    #     return {"workItems": []}
 
-    ids = ",".join(str(item["id"]) for item in work_items)
-    details_url = f"https://dev.azure.com/{org}/_apis/wit/workitems?ids={ids}&$expand=fields&api-version={BASE_API_VERSION}"
-    details_response = requests.get(details_url, auth=HTTPBasicAuth("", pat))
-    details_response.raise_for_status()
-    details_data = details_response.json()
+    # ids = ",".join(str(item["id"]) for item in work_items)
+    # details_url = f"https://dev.azure.com/{org}/_apis/wit/workitems?ids={ids}&$expand=fields&api-version={BASE_API_VERSION}"
+    # details_response = requests.get(details_url, auth=HTTPBasicAuth("", pat))
+    # details_response.raise_for_status()
+    # details_data = details_response.json()
+
+    work_items = run_wiql(org, project, pat, query)
+    batch_size = 50
+    all_work_items = []
+
+    for i in range(0, len(work_items), batch_size):
+        batch = work_items[i:i + batch_size]
+        ids = ",".join(str(item["id"]) for item in batch)
+        # print(batch)
+        details_url = f"https://dev.azure.com/{org}/_apis/wit/workitems?ids={ids}&$expand=fields&api-version={BASE_API_VERSION}"
+        details_response = requests.get(details_url, auth=HTTPBasicAuth("", pat))
+        details_response.raise_for_status()
+        batch_data = details_response.json()
+        # print(batch_data)
+        all_work_items.extend(batch_data.get("value", []))
+
+    details_data = {"count": len(all_work_items), "value": all_work_items}
+
+    # print("Details Data:", details_data)
 
     enriched_items = []
     for wi in details_data.get("value", []):
+        if not "MAQ" in wi["fields"].get("System.AssignedTo", {}).get("displayName", ""):
+            continue
         wi_id = wi["id"]
         comments = fetch_comments(org, project, pat, wi_id)
         wi["comments"] = comments
@@ -78,7 +99,7 @@ def fetch_pullrequests(org: str, project: str, pat: str):
     # TODO: comment count
 
     today = datetime.today()
-    one_month_ago = today - timedelta(days=30)
+    one_month_ago = today - timedelta(days=15)
 
     start_date = one_month_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
     # end_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -166,17 +187,30 @@ def fetch_ado_items(org: str, project: str, pat: str):
             AND [System.TeamProject] = '{project}'
         ORDER BY [System.Id] DESC
     """
-
+    
     ado_items = run_wiql(org, project, pat, query)
+    batch_size = 50
+    all_work_items = []
 
-    ids = ",".join(str(item["id"]) for item in ado_items)
-    details_url = f"https://dev.azure.com/{org}/_apis/wit/workitems?ids={ids}&$expand=fields&api-version={BASE_API_VERSION}"
-    details_response = requests.get(details_url, auth=HTTPBasicAuth("", pat))
-    details_response.raise_for_status()
-    details_response = details_response.json()
+    for i in range(0, len(ado_items), batch_size):
+        batch = ado_items[i:i + batch_size]
+        ids = ",".join(str(item["id"]) for item in batch)
+        # print(batch)
+        details_url = f"https://dev.azure.com/{org}/_apis/wit/workitems?ids={ids}&$expand=fields&api-version={BASE_API_VERSION}"
+        details_response = requests.get(details_url, auth=HTTPBasicAuth("", pat))
+        details_response.raise_for_status()
+        batch_data = details_response.json()
+        # print(batch_data)
+        all_work_items.extend(batch_data.get("value", []))
+
+    details_response = {"count": len(all_work_items), "value": all_work_items}
+
+    # print(details_response)
 
     enriched_items = []
     for wi in details_response.get("value", []):
+        if not "MAQ" in wi["fields"].get("System.AssignedTo", {}).get("displayName", ""):
+            continue
         # if wi["fields"].get("System.WorkItemType") == "Task":
         #     continue
         wi = {
@@ -196,6 +230,8 @@ def fetch_ado_items(org: str, project: str, pat: str):
 
     name_counts = {}
     for item in enriched_items:
+        if not "MAQ" in item["fields"].get("System.CreatedBy", {}).get("displayName", ""):
+            continue
         created_by = item["fields"].get("System.CreatedBy", {})
         display_name = created_by.get("displayName")
         work_item_type = item["fields"].get("System.WorkItemType")

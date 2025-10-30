@@ -5,8 +5,10 @@ import google.generativeai as genai
 from collections import defaultdict
 
 genai.configure(api_key="YOUR_API_KEY")
-model = genai.GenerativeModel("gemini-2.5-flash")
-
+model = genai.GenerativeModel("gemini-2.0-flash-lite")
+# gemini-2.5-flash
+# gemini-2.5-flash-lite
+# gemini-2.0-flash-exp
 
 def normalize_comments(comments):
     """

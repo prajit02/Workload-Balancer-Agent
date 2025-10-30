@@ -96,6 +96,12 @@ export default function App() {
 
             return (
               <>
+                {/* PR Data & ADO Items (top-level keys) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>{result["PR Data"] ? <PRData data={result["PR Data"]} /> : null}</div>
+                  <div>{result["ADO Items"] ? <AdoItems data={result["ADO Items"]} /> : null}</div>
+                </div>
+
                 {teamSummary ? (
                   /* If we have a team summary (analyzed path) show summary + analyzed tasks */
                   <>
@@ -110,11 +116,6 @@ export default function App() {
                   </>
                 )}
 
-                {/* PR Data & ADO Items (top-level keys) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>{result["PR Data"] ? <PRData data={result["PR Data"]} /> : null}</div>
-                  <div>{result["ADO Items"] ? <AdoItems data={result["ADO Items"]} /> : null}</div>
-                </div>
               </>
             );
           })()}
