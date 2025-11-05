@@ -30,7 +30,7 @@ export default function PRData({ data }) {
             {Object.entries(metrics).map(([name, counts], idx) => (
               <li key={idx}>
                 <strong>{name}</strong>: {counts.created_count || 0} created,{" "}
-                {counts.reviewed_count || 0} reviewed
+                {counts.reviewed_count || 0} reviewed, {counts.comments_given || 0} comments given, {counts.comments_received || 0} comments received
               </li>
             ))}
           </ul>

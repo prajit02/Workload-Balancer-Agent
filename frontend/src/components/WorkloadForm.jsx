@@ -4,6 +4,7 @@ export default function WorkloadForm({ onAnalyze, onFetchOnly, disabled }) {
   const [org, setOrg] = useState("");
   const [project, setProject] = useState("");
   const [pat, setPat] = useState("");
+  const [days, setDays] = useState(15); // new state
 
   const handleSubmit = (e, analyze) => {
     e.preventDefault();
@@ -11,14 +12,14 @@ export default function WorkloadForm({ onAnalyze, onFetchOnly, disabled }) {
       alert("Please fill Organization, Project and PAT.");
       return;
     }
-    if (analyze) onAnalyze({ org, project, pat });
-    else onFetchOnly({ org, project, pat });
+    if (analyze) onAnalyze({ org, project, pat, days });
+    else onFetchOnly({ org, project, pat, days });
   };
 
   return (
-    <form className="bg-white p-6 rounded-lg shadow-sm grid gap-4 sm:grid-cols-3">
+    <form className="bg-white p-6 rounded-lg shadow-sm grid gap-4 sm:grid-cols-4">
       <div className="sm:col-span-1">
-        <label className="block text-sm text-slate-700 mb-1">Organization</label>
+        <label className="block text-sm text-slate-700 mb-1">DevOps Organization</label>
         <input
           value={org}
           onChange={(e) => setOrg(e.target.value)}
@@ -40,7 +41,7 @@ export default function WorkloadForm({ onAnalyze, onFetchOnly, disabled }) {
       </div>
 
       <div className="sm:col-span-1">
-        <label className="block text-sm text-slate-700 mb-1">Azure DevOps PAT</label>
+        <label className="block text-sm text-slate-700 mb-1">Personal Access Token</label>
         <input
           value={pat}
           onChange={(e) => setPat(e.target.value)}
@@ -51,7 +52,22 @@ export default function WorkloadForm({ onAnalyze, onFetchOnly, disabled }) {
         />
       </div>
 
-      <div className="sm:col-span-3 flex justify-end gap-3 mt-2">
+      {/* new input */}
+      <div className="sm:col-span-1">
+        <label className="block text-sm text-slate-700 mb-1">Days Range</label>
+        <input
+          type="number"
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          className="w-full border border-slate-200 rounded p-2"
+          placeholder="Ex: 15"
+          min="1"
+          max="90"
+          disabled={disabled}
+        />
+      </div>
+
+      <div className="sm:col-span-4 flex justify-end gap-3 mt-2">
         <button
           type="button"
           onClick={(e) => handleSubmit(e, false)}

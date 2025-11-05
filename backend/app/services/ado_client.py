@@ -12,13 +12,13 @@ def run_wiql(org: str, project: str, pat: str, wiql_query: str):
     response.raise_for_status()
     return response.json().get("workItems", [])
 
-def fetch_workitems(org: str, project: str, pat: str):
+def fetch_workitems(org: str, project: str, pat: str, days: int):
     """Fetch last week's work items with full details"""
     query = f"""
         SELECT [System.Id]
         FROM workitems
         WHERE 
-            [System.CreatedDate] >= @Today - 15
+            [System.CreatedDate] >= @Today - {days}
             AND [System.WorkItemType] = 'Task'
             AND [System.TeamProject] = '{project}'
         ORDER BY [System.Id] DESC
@@ -80,8 +80,8 @@ def fetch_workitems(org: str, project: str, pat: str):
         }
         enriched_items.append(wi)
 
-    pull_requests = fetch_pullrequests(org, project, pat)
-    ado_items = fetch_ado_items(org, project, pat)
+    pull_requests = fetch_pullrequests(org, project, pat, days)
+    ado_items = fetch_ado_items(org, project, pat, days)
 
     return {"count": len(enriched_items), "workItems": enriched_items, "PR Data": pull_requests, "ADO Items": ado_items}
 
@@ -94,14 +94,14 @@ def fetch_comments(org: str, project: str, pat: str, work_item_id: int):
     data = response.json()
     return [c.get("text", "") for c in data.get("comments", [])]
 
-def fetch_pullrequests(org: str, project: str, pat: str):
+def fetch_pullrequests(org: str, project: str, pat: str, days: int):
     """Fetch pull requests for a project"""
     # TODO: comment count
 
     today = datetime.today()
-    one_month_ago = today - timedelta(days=15)
+    time_delta = today - timedelta(days)
 
-    start_date = one_month_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+    start_date = time_delta.strftime('%Y-%m-%dT%H:%M:%SZ')
     # end_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     url = f"https://dev.azure.com/{org}/{project}/_apis/git/pullrequests?status=completed&minTime={start_date}"
@@ -141,8 +141,47 @@ def fetch_pullrequests(org: str, project: str, pat: str):
                 else:
                     name_counts[reviewer_display_name] = {
                         "created_count": 0,
-                        "reviewed_count": 1
+                        "reviewed_count": 1,
+                        "comments_received": 0,
+                        "comments_given": 0
                     }
+        
+        url = f"https://dev.azure.com/{org}/{project}/_apis/git/repositories/{pr.get('repository', {}).get('id')}/pullRequests/{pr.get('pullRequestId')}/threads?api-version={BASE_API_VERSION}"
+        response = requests.get(url, auth=HTTPBasicAuth("", pat))
+
+        if response.status_code != 200:
+            print(response)
+        comments = response.json()
+        commentors = {"count":0, "names":{}}
+
+        for comment in comments.get("value", []):
+            thread = comment.get("comments", [])
+            thread = thread[0] if thread else {}
+
+            if thread.get("commentType", "") != "system":
+                commentors["count"] += 1
+                if thread.get("author", {}).get("displayName", "") not in commentors["names"]:
+                    commentors["names"][thread.get("author", {}).get("displayName", "")] = 1
+                else:
+                    commentors["names"][thread.get("author", {}).get("displayName", "")] += 1
+
+        if "comments_received" in name_counts[display_name]:
+            name_counts[display_name]["comments_received"] += commentors["count"]
+        else:
+            name_counts[display_name]["comments_received"] = commentors["count"]
+
+        for commenter in commentors["names"]:
+            if commenter in name_counts:
+                if "comments_given" in name_counts[commenter]:
+                    name_counts[commenter]["comments_given"] += commentors["names"][commenter]
+                else:
+                    name_counts[commenter]["comments_given"] = commentors["names"][commenter]
+            else:
+                name_counts[commenter] = {
+                    "created_count": 0,
+                    "reviewed_count": 0,
+                    "comments_given": commentors["names"][commenter]
+                }
 
         # Add PR details to result list
         result.append({
@@ -175,7 +214,7 @@ def fetch_pullrequests(org: str, project: str, pat: str):
 
     return finalresult
 
-def fetch_ado_items(org: str, project: str, pat: str):
+def fetch_ado_items(org: str, project: str, pat: str, days: int):
     """"Fetch ado items"""
     #TODO count by user of items
 
@@ -183,7 +222,7 @@ def fetch_ado_items(org: str, project: str, pat: str):
         SELECT [System.Id]
         FROM workitems
         WHERE 
-            [System.CreatedDate] >= @Today - 15
+            [System.CreatedDate] >= @Today - {days}
             AND [System.TeamProject] = '{project}'
         ORDER BY [System.Id] DESC
     """
